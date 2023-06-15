@@ -26,5 +26,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Stdout.Write(cipher.Decipher(data, byte(key)))
+	os.Stdout.Write(cipher.Decipher(data, key))
 }
