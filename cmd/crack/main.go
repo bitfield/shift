@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/bitfield/cipher"
+	"github.com/bitfield/shift"
 )
 
 func main() {
@@ -21,10 +21,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	key, err := cipher.Crack(data, []byte(*crib))
+	key, err := shift.Crack(data, []byte(*crib))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Stdout.Write(cipher.Decipher(data, key))
+	os.Stdout.Write(shift.Decipher(data, key))
 }

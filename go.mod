@@ -1,3 +1,3 @@
-module github.com/bitfield/cipher
+module github.com/bitfield/shift
 
 go 1.20
