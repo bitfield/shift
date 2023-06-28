@@ -2,7 +2,6 @@ package shift_test
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"testing"
@@ -10,12 +9,12 @@ import (
 	"github.com/bitfield/shift"
 )
 
+var testKey = bytes.Repeat([]byte{1}, shift.BlockSize)
+
 var cases = []struct {
-	key                   string
 	plaintext, ciphertext []byte
 }{
 	{
-		key:        "0101010101010101010101010101010101010101010101010101010101010101",
 		plaintext:  []byte{0, 1, 2, 3, 4, 5},
 		ciphertext: []byte{1, 2, 3, 4, 5, 6},
 	},
@@ -24,13 +23,9 @@ var cases = []struct {
 func TestEncipherBlock(t *testing.T) {
 	t.Parallel()
 	for _, tc := range cases {
-		name := fmt.Sprintf("%v + %s = %v", tc.plaintext, tc.key, tc.ciphertext)
+		name := fmt.Sprintf("%v + %s = %v", tc.plaintext, testKey, tc.ciphertext)
 		t.Run(name, func(t *testing.T) {
-			key, err := hex.DecodeString(tc.key)
-			if err != nil {
-				t.Fatal(err)
-			}
-			block, err := shift.NewCipher(key)
+			block, err := shift.NewCipher(testKey)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -45,17 +40,13 @@ func TestEncipherBlock(t *testing.T) {
 
 func TestDecipherBlock(t *testing.T) {
 	t.Parallel()
+	block, err := shift.NewCipher(testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range cases {
-		name := fmt.Sprintf("%v - %s = %v", tc.ciphertext, tc.key, tc.plaintext)
+		name := fmt.Sprintf("%v - %s = %v", tc.ciphertext, testKey, tc.plaintext)
 		t.Run(name, func(t *testing.T) {
-			key, err := hex.DecodeString(tc.key)
-			if err != nil {
-				t.Fatal(err)
-			}
-			block, err := shift.NewCipher(key)
-			if err != nil {
-				t.Fatal(err)
-			}
 			got := make([]byte, len(tc.ciphertext))
 			block.Decrypt(got, tc.ciphertext)
 			if !bytes.Equal(tc.plaintext, got) {
@@ -65,7 +56,7 @@ func TestDecipherBlock(t *testing.T) {
 	}
 }
 
-func TestNewCipher_ErrorsIfKeyDoesNotMatchBlockSize(t *testing.T) {
+func TestNewCipher_GivesErrKeySizeForInvalidKey(t *testing.T) {
 	t.Parallel()
 	_, err := shift.NewCipher([]byte{})
 	if !errors.Is(err, shift.ErrKeySize) {
@@ -73,11 +64,11 @@ func TestNewCipher_ErrorsIfKeyDoesNotMatchBlockSize(t *testing.T) {
 	}
 }
 
-func TestNewCipher_GivesNoErrorIfKeyMatchesBlockSize(t *testing.T) {
+func TestNewCipher_GivesNoErrorForValidKey(t *testing.T) {
 	t.Parallel()
 	_, err := shift.NewCipher(make([]byte, shift.BlockSize))
 	if err != nil {
-		t.Errorf("want no error, got %v", err)
+		t.Fatalf("want no error, got %v", err)
 	}
 }
 
@@ -94,14 +85,10 @@ func TestBlockSize_ReturnsBlockSize(t *testing.T) {
 	}
 }
 
-func TestEncrypterCryptBlocks(t *testing.T) {
+func TestEncrypterCorrectlyEnciphersPlaintext(t *testing.T) {
 	t.Parallel()
 	plaintext := []byte("This message is exactly 32 bytes")
-	key, err := hex.DecodeString("0101010101010101010101010101010101010101010101010101010101010101")
-	if err != nil {
-		t.Fatal(err)
-	}
-	block, err := shift.NewCipher(key)
+	block, err := shift.NewCipher(testKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,11 +104,7 @@ func TestEncrypterCryptBlocks(t *testing.T) {
 func TestDecrypterCryptBlocks(t *testing.T) {
 	t.Parallel()
 	ciphertext := []byte("Uijt!nfttbhf!jt!fybdumz!43!czuft")
-	key, err := hex.DecodeString("0101010101010101010101010101010101010101010101010101010101010101")
-	if err != nil {
-		t.Fatal(err)
-	}
-	block, err := shift.NewCipher(key)
+	block, err := shift.NewCipher(testKey)
 	if err != nil {
 		t.Fatal(err)
 	}

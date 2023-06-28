@@ -56,6 +56,12 @@ func (e encrypter) BlockSize() int {
 }
 
 func (e *encrypter) CryptBlocks(dst, src []byte) {
+	if len(src)%e.blockSize != 0 {
+		panic("encrypter: input not full blocks")
+	}
+	if len(dst) < len(src) {
+		panic("encrypter: output smaller than input")
+	}
 	for len(src) > 0 {
 		e.block.Encrypt(dst[:e.blockSize], src[:e.blockSize])
 		src = src[e.blockSize:]
