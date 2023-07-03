@@ -11,7 +11,7 @@ import (
 
 var testKey = bytes.Repeat([]byte{1}, shift.BlockSize)
 
-var cases = []struct {
+var cipherCases = []struct {
 	plaintext, ciphertext []byte
 }{
 	{
@@ -22,7 +22,7 @@ var cases = []struct {
 
 func TestEncipherBlock(t *testing.T) {
 	t.Parallel()
-	for _, tc := range cases {
+	for _, tc := range cipherCases {
 		name := fmt.Sprintf("%v + %s = %v", tc.plaintext, testKey, tc.ciphertext)
 		t.Run(name, func(t *testing.T) {
 			block, err := shift.NewCipher(testKey)
@@ -44,7 +44,7 @@ func TestDecipherBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range cases {
+	for _, tc := range cipherCases {
 		name := fmt.Sprintf("%v - %s = %v", tc.ciphertext, testKey, tc.plaintext)
 		t.Run(name, func(t *testing.T) {
 			got := make([]byte, len(tc.ciphertext))
@@ -119,16 +119,73 @@ func TestDecrypterCryptBlocks(t *testing.T) {
 
 // func TestCrack(t *testing.T) {
 // 	t.Parallel()
-// 	for _, tc := range cases {
-// 		name := fmt.Sprintf("%s + %d = %s", tc.plaintext, tc.key, tc.ciphertext)
+// 	for _, tc := range cipherCases {
+// 		name := fmt.Sprintf("%s + %d = %s", tc.plaintext, testKey, tc.ciphertext)
 // 		t.Run(name, func(t *testing.T) {
 // 			got, err := shift.Crack(tc.ciphertext, tc.plaintext[:3])
 // 			if err != nil {
 // 				t.Fatal(err)
 // 			}
-// 			if !bytes.Equal(tc.key, got) {
-// 				t.Fatalf("want %d, got %d", tc.key, got)
+// 			if !bytes.Equal(testKey, got) {
+// 				t.Fatalf("want %d, got %d", testKey, got)
 // 			}
 // 		})
 // 	}
 // }
+
+var padCases = []struct {
+	name           string
+	actual, padded []byte
+}{
+	{
+		name:   "1 short of full block",
+		actual: []byte{1, 2, 3},
+		padded: []byte{1, 2, 3, 1},
+	},
+	{
+		name:   "2 short of full block",
+		actual: []byte{1, 2},
+		padded: []byte{1, 2, 2, 2},
+	},
+	{
+		name:   "3 short of full block",
+		actual: []byte{1},
+		padded: []byte{1, 3, 3, 3},
+	},
+	{
+		name:   "full block",
+		actual: []byte{1, 2, 3, 4},
+		padded: []byte{1, 2, 3, 4, 4, 4, 4, 4},
+	},
+	{
+		name:   "empty block",
+		actual: []byte{},
+		padded: []byte{4, 4, 4, 4},
+	},
+}
+
+func TestPad(t *testing.T) {
+	t.Parallel()
+	blockSize := 4
+	for _, tc := range padCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shift.Pad(tc.actual, blockSize)
+			if !bytes.Equal(tc.padded, got) {
+				t.Errorf("want %v, got %v", tc.padded, got)
+			}
+		})
+	}
+}
+
+func TestUnpad(t *testing.T) {
+	t.Parallel()
+	blockSize := 4
+	for _, tc := range padCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shift.Unpad(tc.padded, blockSize)
+			if !bytes.Equal(tc.actual, got) {
+				t.Errorf("want %v, got %v", tc.actual, got)
+			}
+		})
+	}
+}

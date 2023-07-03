@@ -1,6 +1,7 @@
 package shift
 
 import (
+	"bytes"
 	"crypto/cipher"
 	"errors"
 	"fmt"
@@ -93,17 +94,34 @@ func (e *decrypter) CryptBlocks(dst, src []byte) {
 	}
 }
 
+func Pad(data []byte, blockSize int) []byte {
+	n := blockSize - len(data)%blockSize
+	padding := bytes.Repeat([]byte{byte(n)}, n)
+	return append(data, padding...)
+}
+
+func Unpad(data []byte, blockSize int) []byte {
+	n := int(data[len(data)-1])
+	return data[:len(data)-n]
+}
+
 // func Crack(ciphertext, crib []byte) (key []byte, err error) {
-// 	var b byte
-// 	for keyPos := 0; keyPos < MaxKeyLen && keyPos < len(ciphertext); keyPos++ {
-// 		for b = 0; b <= 255; b++ {
+// 	plaintext := make([]byte, BlockSize)
+// 	key = make([]byte, BlockSize)
+// 	for keyPos := 0; keyPos < BlockSize; keyPos++ {
+// 		for b := byte(0); b <= 255; b++ {
 // 			result := ciphertext[keyPos] - b
 // 			if result == crib[keyPos] {
-// 				key = append(key, b)
+// 				key[keyPos] = b
 // 				break
 // 			}
 // 		}
-// 		if bytes.Equal(crib, Decipher(ciphertext[:len(crib)], key)) {
+// 		block, err := NewCipher(key)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		block.Decrypt(plaintext, ciphertext[:len(crib)])
+// 		if bytes.Equal(crib, plaintext) {
 // 			return key, nil
 // 		}
 // 	}

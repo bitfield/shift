@@ -29,6 +29,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	plaintext = shift.Pad(plaintext, mode.BlockSize())
 	ciphertext := make([]byte, len(plaintext))
 	mode.CryptBlocks(ciphertext, plaintext)
 	os.Stdout.Write(ciphertext)
