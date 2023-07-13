@@ -87,6 +87,12 @@ func (e decrypter) BlockSize() int {
 }
 
 func (e *decrypter) CryptBlocks(dst, src []byte) {
+	if len(src)%e.blockSize != 0 {
+		panic("decrypter: input not full blocks")
+	}
+	if len(dst) < len(src) {
+		panic("decrypter: output smaller than input")
+	}
 	for len(src) > 0 {
 		e.block.Decrypt(dst[:e.blockSize], src[:e.blockSize])
 		src = src[e.blockSize:]
@@ -105,25 +111,33 @@ func Unpad(data []byte, blockSize int) []byte {
 	return data[:len(data)-n]
 }
 
-// func Crack(ciphertext, crib []byte) (key []byte, err error) {
-// 	plaintext := make([]byte, BlockSize)
-// 	key = make([]byte, BlockSize)
-// 	for keyPos := 0; keyPos < BlockSize; keyPos++ {
-// 		for b := byte(0); b <= 255; b++ {
-// 			result := ciphertext[keyPos] - b
-// 			if result == crib[keyPos] {
-// 				key[keyPos] = b
-// 				break
-// 			}
-// 		}
-// 		block, err := NewCipher(key)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		block.Decrypt(plaintext, ciphertext[:len(crib)])
-// 		if bytes.Equal(crib, plaintext) {
-// 			return key, nil
-// 		}
-// 	}
-// 	return nil, errors.New("no key found")
-// }
+func Crack(ciphertext, crib []byte) (key []byte, err error) {
+	plaintext := make([]byte, len(crib))
+	key = make([]byte, BlockSize)
+	for {
+		block, err := NewCipher(key)
+		if err != nil {
+			panic(err)
+		}
+		block.Decrypt(plaintext, ciphertext[:len(crib)])
+		// fmt.Println("key", key, "crib", crib, "decryption", plaintext)
+		if bytes.Equal(crib, plaintext) {
+			return key, nil
+		}
+		key, err = next(key)
+		if err != nil {
+			return nil, errors.New("no key found")
+		}
+	}
+}
+
+func next(key []byte) ([]byte, error) {
+	for i := range key {
+		if key[i] < 255 {
+			key[i]++
+			return key, nil
+		}
+		key[i] = 0
+	}
+	return nil, errors.New("overflow")
+}

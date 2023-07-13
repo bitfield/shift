@@ -20,37 +20,37 @@ var cipherCases = []struct {
 	},
 }
 
-func TestEncipherBlock(t *testing.T) {
-	t.Parallel()
-	for _, tc := range cipherCases {
-		name := fmt.Sprintf("%v + %s = %v", tc.plaintext, testKey, tc.ciphertext)
-		t.Run(name, func(t *testing.T) {
-			block, err := shift.NewCipher(testKey)
-			if err != nil {
-				t.Fatal(err)
-			}
-			got := make([]byte, len(tc.plaintext))
-			block.Encrypt(got, tc.plaintext)
-			if !bytes.Equal(tc.ciphertext, got) {
-				t.Errorf("want %q, got %q", tc.ciphertext, got)
-			}
-		})
-	}
-}
-
-func TestDecipherBlock(t *testing.T) {
+func TestEncrypt(t *testing.T) {
 	t.Parallel()
 	block, err := shift.NewCipher(testKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range cipherCases {
-		name := fmt.Sprintf("%v - %s = %v", tc.ciphertext, testKey, tc.plaintext)
+		name := fmt.Sprintf("%x + %x = %x", tc.plaintext, testKey, tc.ciphertext)
+		t.Run(name, func(t *testing.T) {
+			got := make([]byte, len(tc.plaintext))
+			block.Encrypt(got, tc.plaintext)
+			if !bytes.Equal(tc.ciphertext, got) {
+				t.Errorf("want %x, got %x", tc.ciphertext, got)
+			}
+		})
+	}
+}
+
+func TestDecrypt(t *testing.T) {
+	t.Parallel()
+	block, err := shift.NewCipher(testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cipherCases {
+		name := fmt.Sprintf("%x - %x = %x", tc.ciphertext, testKey, tc.plaintext)
 		t.Run(name, func(t *testing.T) {
 			got := make([]byte, len(tc.ciphertext))
 			block.Decrypt(got, tc.ciphertext)
 			if !bytes.Equal(tc.plaintext, got) {
-				t.Errorf("want %q, got %q", tc.plaintext, got)
+				t.Errorf("want %x, got %x", tc.plaintext, got)
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestBlockSize_ReturnsBlockSize(t *testing.T) {
 	}
 }
 
-func TestEncrypterCorrectlyEnciphersPlaintext(t *testing.T) {
+func TestEncrypterEnciphersBlockAlignedMessage(t *testing.T) {
 	t.Parallel()
 	plaintext := []byte("This message is exactly 32 bytes")
 	block, err := shift.NewCipher(testKey)
@@ -117,21 +117,28 @@ func TestDecrypterCryptBlocks(t *testing.T) {
 	}
 }
 
-// func TestCrack(t *testing.T) {
-// 	t.Parallel()
-// 	for _, tc := range cipherCases {
-// 		name := fmt.Sprintf("%s + %d = %s", tc.plaintext, testKey, tc.ciphertext)
-// 		t.Run(name, func(t *testing.T) {
-// 			got, err := shift.Crack(tc.ciphertext, tc.plaintext[:3])
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 			if !bytes.Equal(testKey, got) {
-// 				t.Fatalf("want %d, got %d", testKey, got)
-// 			}
-// 		})
-// 	}
-// }
+func TestCrack(t *testing.T) {
+	t.Parallel()
+	plaintext := []byte("This message is exactly 32 bytes")
+	ciphertext := []byte("Ujls message is exactly 32 bytes")
+	want := append([]byte{1, 2, 3}, bytes.Repeat([]byte{0}, 29)...)
+	got, err := shift.Crack(ciphertext, plaintext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(want, got) {
+		t.Fatalf("want %d, got %d", want, got)
+	}
+}
+
+func BenchmarkCrack(b *testing.B) {
+	plaintext := []byte("This message is exactly 32 bytes")
+	ciphertext := []byte("Ujlw message is exactly 32 bytes")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = shift.Crack(ciphertext, plaintext)
+	}
+}
 
 var padCases = []struct {
 	name           string
@@ -139,23 +146,23 @@ var padCases = []struct {
 }{
 	{
 		name:   "1 short of full block",
-		actual: []byte{1, 2, 3},
-		padded: []byte{1, 2, 3, 1},
+		actual: []byte{0, 0, 0},
+		padded: []byte{0, 0, 0, 1},
 	},
 	{
 		name:   "2 short of full block",
-		actual: []byte{1, 2},
-		padded: []byte{1, 2, 2, 2},
+		actual: []byte{0, 0},
+		padded: []byte{0, 0, 2, 2},
 	},
 	{
 		name:   "3 short of full block",
-		actual: []byte{1},
-		padded: []byte{1, 3, 3, 3},
+		actual: []byte{0},
+		padded: []byte{0, 3, 3, 3},
 	},
 	{
 		name:   "full block",
-		actual: []byte{1, 2, 3, 4},
-		padded: []byte{1, 2, 3, 4, 4, 4, 4, 4},
+		actual: []byte{0, 0, 0, 0},
+		padded: []byte{0, 0, 0, 0, 4, 4, 4, 4},
 	},
 	{
 		name:   "empty block",

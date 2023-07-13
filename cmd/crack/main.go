@@ -16,15 +16,24 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Please specify a crib text with -crib")
 		os.Exit(1)
 	}
-	data, err := io.ReadAll(os.Stdin)
+	ciphertext, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	key, err := shift.Crack(data, []byte(*crib))
+	key, err := shift.Crack(ciphertext, []byte(*crib))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Stdout.Write(shift.Decipher(data, key))
+	block, err := shift.NewCipher(key)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	mode := shift.NewDecrypter(block)
+	ciphertext = shift.Pad(ciphertext, mode.BlockSize())
+	plaintext := make([]byte, len(ciphertext))
+	mode.CryptBlocks(plaintext, ciphertext)
+	os.Stdout.Write(plaintext)
 }

@@ -11,17 +11,26 @@ import (
 )
 
 func main() {
-	key := flag.String("key", "01", "key in hexadecimal (for example 'FF')")
+	keyHex := flag.String("key", "", "32-byte key in hexadecimal")
 	flag.Parse()
-	data, err := io.ReadAll(os.Stdin)
+	key, err := hex.DecodeString(*keyHex)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	keyBytes, err := hex.DecodeString(*key)
+	block, err := shift.NewCipher(key)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Stdout.Write(shift.Decipher(data, keyBytes))
+	mode := shift.NewDecrypter(block)
+	plaintext, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	plaintext = shift.Pad(plaintext, mode.BlockSize())
+	ciphertext := make([]byte, len(plaintext))
+	mode.CryptBlocks(ciphertext, plaintext)
+	os.Stdout.Write(ciphertext)
 }
